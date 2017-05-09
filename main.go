@@ -1,12 +1,18 @@
+/*
+
+ */
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"sync"
@@ -14,23 +20,81 @@ import (
 )
 
 var (
-	listen = flag.String("listen", ":9112", "http listen address")
-	creds  = flag.String("creds", ".creds.json", "creds json file containing client credentials")
+	// Server flags
+	listen = flag.String("listen", ":8080", "http listen address")
+	creds  = flag.String("creds", "creds.json", "creds json file containing client credentials")
+
+	// Client flags
+	get = flag.Bool("get", false, "get from kvstore")
+	set = flag.Bool("set", false, "set key value to kvstore")
+	k   = flag.String("k", "", "kvstore key")
+	v   = flag.String("v", "", "kvstore value")
+)
+
+// Configs used by cli client to get and set values
+var (
+	store = os.Getenv("KVSTORE")
+	cred  = os.Getenv("KVCRED")
 )
 
 func main() {
-	h, err := newHandler(*creds)
+	flag.Parse()
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
+
+	if !*get && !*set {
+		serve(*listen, *creds)
+		return
+	}
+
+	if store == "" || cred == "" {
+		fmt.Fprintf(os.Stderr, "kvstore client cannot get/set without $KVSTORE and $KVCRED in env\n")
+		os.Exit(1)
+	}
+
+	cl, err := NewClient(store, cred)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "unable to connect to store %s: %v\n", store, err)
+		os.Exit(1)
+	}
+	if *k == "" {
+		fmt.Fprintln(os.Stderr, "kvstore cannot get/set without key -k")
+		os.Exit(1)
+		return
+	}
+
+	if *get {
+		v, err := cl.Get(*k)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "unable to get from store: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Fprintln(os.Stdout, v)
+		return
+	}
+	if *set {
+		if err := cl.Set(*k, *v); err != nil {
+			fmt.Fprintf(os.Stderr, "unable to get from store: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Fprintf(os.Stdout, "%s: %s\n", *k, *v)
+		return
+	}
+}
+
+func serve(listenAddr, credsFile string) {
+	h, err := newHandler(credsFile)
 	if err != nil {
 		fmt.Printf("init failed: %v\n", err)
 		os.Exit(1)
 	}
 	http.Handle("/", h)
 	svr := &http.Server{
-		Addr:           *listen,
+		Addr:           listenAddr,
 		ReadTimeout:    15 * time.Second,
 		WriteTimeout:   30 * time.Second,
 		MaxHeaderBytes: 1 << 20,
 	}
+	fmt.Printf("launching http server on %s\n", listenAddr)
 	if err := svr.ListenAndServe(); err != nil {
 		fmt.Printf("server crashed: %s\n", err)
 		os.Exit(1)
@@ -70,6 +134,10 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid request", http.StatusBadRequest)
 		return
 	}
+	if !h.validCred(r.FormValue("cred")) {
+		http.Error(w, "invalid cred", http.StatusUnauthorized)
+		return
+	}
 	switch r.Method {
 	case "GET":
 		h.get(w, r)
@@ -83,33 +151,26 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 }
 func (h *handler) get(w http.ResponseWriter, r *http.Request) {
-	if !h.validCred(r.URL.Query().Get("cred")) {
-		http.Error(w, "invalid cred", http.StatusUnauthorized)
+	key := r.FormValue("k")
+	if key == "" {
+		http.Error(w, "missing key", http.StatusBadRequest)
 		return
 	}
-	v, err := get(r.Form.Get("k"))
+	v, err := tempStore.get(key)
 	if err != nil {
-		fmt.Fprint(w, "no such key in store")
+		http.Error(w, "no such key in store", http.StatusNotFound)
 		return
 	}
 	fmt.Fprint(w, v)
 }
 func (h *handler) put(w http.ResponseWriter, r *http.Request) {
-	if err := r.ParseForm(); err != nil {
-		http.Error(w, "unable to parse post request", http.StatusBadRequest)
-		return
-	}
-	if !h.validCred(r.Form.Get("cred")) {
-		http.Error(w, "invalid cred", http.StatusUnauthorized)
-		return
-	}
-	k, v := r.Form.Get("k"), r.Form.Get("v")
+	k, v := r.FormValue("k"), r.FormValue("v")
 	k, v = strings.TrimSpace(k), strings.TrimSpace(v)
 	if k == "" {
 		http.Error(w, "key cannot be empty", http.StatusBadRequest)
 		return
 	}
-	set(k, v)
+	tempStore.set(k, v)
 	fmt.Fprintf(w, "%s: %s", k, v)
 }
 
@@ -126,18 +187,122 @@ type kvStore struct {
 
 var tempStore = &kvStore{kv: make(map[string]string)}
 
-func set(key, value string) {
-	tempStore.mu.Lock()
-	tempStore.kv[key] = value
-	tempStore.mu.Unlock()
+func (kv *kvStore) set(key, value string) {
+	kv.mu.Lock()
+	kv.kv[key] = value
+	kv.mu.Unlock()
 }
-func get(key string) (string, error) {
-	tempStore.mu.RLock()
-	v, ok := tempStore.kv[key]
-	tempStore.mu.RUnlock()
+func (kv *kvStore) get(key string) (string, error) {
+	kv.mu.RLock()
+	v, ok := kv.kv[key]
+	kv.mu.RUnlock()
 	if !ok {
 		return "", errors.New("miss")
 	}
 	return v, nil
 
+}
+
+// Client defines the structure of a kvstore cli client
+type Client struct {
+	Store  *url.URL     // url containing cred query param
+	client *http.Client // the http.Client to use
+}
+
+// NewClient verifies the credential and server and returns a client for use
+func NewClient(store, cred string) (*Client, error) {
+	u, err := url.Parse(store)
+	if err != nil {
+		return nil, fmt.Errorf("invalid store url: %v", err)
+	}
+	q := u.Query()
+	q.Set("cred", cred)
+	u.RawQuery = q.Encode()
+	cli := &Client{Store: u}
+	cli.client = &http.Client{Timeout: time.Second}
+	req, err := http.NewRequest("GET", cli.Store.String(), nil)
+	if err != nil {
+		return nil, fmt.Errorf("invalid store submitted: %s", store)
+	}
+	resp, err := cli.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("cannot reach store endpoint %s", store)
+	}
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			log.Print(err)
+		}
+	}()
+	if resp.StatusCode == http.StatusUnauthorized {
+		return nil, fmt.Errorf("invalid -cred for store %s", store)
+	}
+	dat, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("invalid response from store")
+	}
+	if !strings.Contains(string(dat), "missing key") {
+		return nil, fmt.Errorf("invalid response from store: %s", dat)
+	}
+	return cli, nil
+}
+
+// Get is used by the cli client to fetch the value of a key
+func (cli *Client) Get(key string) (string, error) {
+	q := cli.Store.Query()
+	q.Add("k", key)
+	cli.Store.RawQuery = q.Encode()
+	req, err := http.NewRequest("GET", cli.Store.String(), nil)
+	if err != nil {
+		return "", fmt.Errorf("unable to get from store: %v", err)
+	}
+	resp, err := cli.client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("invalid response from store: %v", err)
+	}
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			log.Print(err)
+		}
+	}()
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("response from store not OK: %s", http.StatusText(resp.StatusCode))
+	}
+	dat, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("invalid response from the store:%v", err)
+	}
+	return string(dat), nil
+}
+
+// Set is used by the cli client to set the value of a key
+func (cli *Client) Set(key, value string) error {
+	q := cli.Store.Query()
+	q.Add("k", key)
+	q.Add("v", value)
+	cli.Store.RawQuery = q.Encode()
+	req, err := http.NewRequest("PUT", cli.Store.String(), nil)
+	if err != nil {
+		return fmt.Errorf("unable to put to store: %v", err)
+	}
+	resp, err := cli.client.Do(req)
+	if err != nil {
+		return fmt.Errorf("invalid response from store: %v", err)
+	}
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			log.Print(err)
+		}
+	}()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("response from store not OK: %s", http.StatusText(resp.StatusCode))
+	}
+	dat, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("invalid response from store: %v", err)
+	}
+	want := fmt.Sprintf("%s: %s", key, value)
+	if !bytes.Equal([]byte(want), dat) {
+		return fmt.Errorf("unable to set key value in store")
+	}
+	return nil
 }
