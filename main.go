@@ -65,8 +65,7 @@ func main() {
 	if *get {
 		v, err := cl.Get(*k)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "unable to get from store: %v\n", err)
-			os.Exit(1)
+			fmt.Fprintf(os.Stderr, "%v", err)
 		}
 		fmt.Fprintln(os.Stdout, v)
 		return
@@ -74,9 +73,7 @@ func main() {
 	if *set {
 		if err := cl.Set(*k, *v); err != nil {
 			fmt.Fprintf(os.Stderr, "unable to get from store: %v\n", err)
-			os.Exit(1)
 		}
-		fmt.Fprintf(os.Stdout, "%s: %s\n", *k, *v)
 		return
 	}
 }
@@ -264,6 +261,9 @@ func (cli *Client) Get(key string) (string, error) {
 			log.Print(err)
 		}
 	}()
+	if resp.StatusCode == http.StatusNotFound {
+		return "", errors.New("not in store")
+	}
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("response from store not OK: %s", http.StatusText(resp.StatusCode))
 	}
