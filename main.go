@@ -106,7 +106,7 @@ type handler struct {
 func newHandler(credsFile string) (*handler, error) {
 	dat, err := ioutil.ReadFile(credsFile)
 	if err != nil {
-		return nil, fmt.Errorf("unable to read %s for passwords", credsFile)
+		return nil, fmt.Errorf("unable to read %s for client credentials", credsFile)
 	}
 	var creds []string
 	err = json.Unmarshal(dat, &creds)

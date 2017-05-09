@@ -26,7 +26,7 @@ echo "[\"credential1\",\"cred2\"]" >creds.json
 kvstore 
 
 # launch store on localhost (local kvstore)
-kvstore -listen http://localhost:8080  
+kvstore -listen localhost:8080  
 
 # use a diffent creds.json file
 kvstore -creds ~/.kvcreds.json
