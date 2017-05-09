@@ -58,7 +58,6 @@ func main() {
 	if *k == "" {
 		fmt.Fprintln(os.Stderr, "kvstore cannot get/set without key -k")
 		os.Exit(1)
-		return
 	}
 
 	if *get {
@@ -73,7 +72,6 @@ func main() {
 		if err := cl.Set(*k, *v); err != nil {
 			fmt.Fprintf(os.Stderr, "unable to get from store: %v\n", err)
 		}
-		return
 	}
 }
 
@@ -94,7 +92,6 @@ func serve(listenAddr, credsFile string) {
 	if err := svr.ListenAndServe(); err != nil {
 		fmt.Printf("server crashed: %s\n", err)
 		os.Exit(1)
-		return
 	}
 }
 
@@ -133,6 +130,7 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	cred := r.FormValue("cred")
 	if cred == "" {
 		fmt.Fprint(w, "")
+		return
 	}
 	if !h.validCred(cred) {
 		http.Error(w, "invalid cred", http.StatusUnauthorized)

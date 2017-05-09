@@ -1,5 +1,5 @@
 # kvstore - a simple key-value store over http
-[![CircleCI](https://circleci.com/gh/peteretelej/kvstore.png?circle-token=:circle-token)](ci) [![Go Report Card](https://goreportcard.com/badge/github.com/peteretelej/kvstore)](https://goreportcard.com/report/github.com/peteretelej/kvstore)
+[![CircleCI](https://circleci.com/gh/peteretelej/kvstore.png?circle-token=102c26c48e4330a3597e3670a337a9e634d245aa)](https://circleci.com/gh/peteretelej/kvstore) [![Go Report Card](https://goreportcard.com/badge/github.com/peteretelej/kvstore)](https://goreportcard.com/report/github.com/peteretelej/kvstore)
 
 kvstore provides key-value storage over HTTP.
 
@@ -24,7 +24,10 @@ echo "[\"credential1\",\"cred2\"]" >creds.json
 
 # launches the kvstore store listening on port 8080
 kvstore 
+```
 
+Changing server listen address and credentials
+``` sh
 # launch store on localhost (local kvstore)
 kvstore -listen localhost:8080  
 
