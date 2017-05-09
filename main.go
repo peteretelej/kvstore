@@ -19,18 +19,6 @@ import (
 	"time"
 )
 
-var (
-	// Server flags
-	listen = flag.String("listen", ":8080", "http listen address")
-	creds  = flag.String("creds", "creds.json", "creds json file containing client credentials")
-
-	// Client flags
-	get = flag.Bool("get", false, "get from kvstore")
-	set = flag.Bool("set", false, "set key value to kvstore")
-	k   = flag.String("k", "", "kvstore key")
-	v   = flag.String("v", "", "kvstore value")
-)
-
 // Configs used by cli client to get and set values
 var (
 	store = os.Getenv("KVSTORE")
@@ -38,6 +26,17 @@ var (
 )
 
 func main() {
+	var (
+		// Server flags
+		listen = flag.String("listen", ":8080", "http listen address")
+		creds  = flag.String("creds", "creds.json", "creds json file containing client credentials")
+
+		// Client flags
+		get = flag.Bool("get", false, "get from kvstore")
+		set = flag.Bool("set", false, "set key value to kvstore")
+		k   = flag.String("k", "", "kvstore key")
+		v   = flag.String("v", "", "kvstore value")
+	)
 	flag.Parse()
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
@@ -131,8 +130,16 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid request", http.StatusBadRequest)
 		return
 	}
-	if !h.validCred(r.FormValue("cred")) {
+	cred := r.FormValue("cred")
+	if cred == "" {
+		fmt.Fprint(w, "")
+	}
+	if !h.validCred(cred) {
 		http.Error(w, "invalid cred", http.StatusUnauthorized)
+		return
+	}
+	if r.FormValue("k") == "" {
+		http.Error(w, "missing key", http.StatusBadRequest)
 		return
 	}
 	switch r.Method {
@@ -148,12 +155,7 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 }
 func (h *handler) get(w http.ResponseWriter, r *http.Request) {
-	key := r.FormValue("k")
-	if key == "" {
-		http.Error(w, "missing key", http.StatusBadRequest)
-		return
-	}
-	v, err := tempStore.get(key)
+	v, err := tempStore.get(r.FormValue("k"))
 	if err != nil {
 		http.Error(w, "no such key in store", http.StatusNotFound)
 		return
@@ -161,10 +163,9 @@ func (h *handler) get(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, v)
 }
 func (h *handler) put(w http.ResponseWriter, r *http.Request) {
-	k, v := r.FormValue("k"), r.FormValue("v")
-	k, v = strings.TrimSpace(k), strings.TrimSpace(v)
+	k, v := strings.TrimSpace(r.FormValue("k")), r.FormValue("v")
 	if k == "" {
-		http.Error(w, "key cannot be empty", http.StatusBadRequest)
+		http.Error(w, "key cannot be empty space", http.StatusBadRequest)
 		return
 	}
 	tempStore.set(k, v)
