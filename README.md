@@ -1,4 +1,5 @@
 # kvstore - a kvstore over http
+[![CircleCI](https://circleci.com/gh/peteretelej/kvstore.png?circle-token=:circle-token)](ci) [![Go Report Card](https://goreportcard.com/badge/github.com/peteretelej/kvstore)](https://goreportcard.com/report/github.com/peteretelej/kvstore)
 
 kvstore provides key-value storage over HTTP.
 

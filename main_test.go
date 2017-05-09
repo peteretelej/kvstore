@@ -63,13 +63,6 @@ func TestHandler(t *testing.T) {
 	}
 }
 
-type httptestfields struct {
-	method string
-	url    string
-	status int
-	body   string
-}
-
 func TestHandlerServeHTTP(t *testing.T) {
 	tmpjson, err := ioutil.TempFile("", "cred.json")
 	if err != nil {
@@ -90,6 +83,12 @@ func TestHandlerServeHTTP(t *testing.T) {
 		t.Errorf("newHandler test failed, got %v, want %v", err, nil)
 	}
 
+	type httptestfields struct {
+		method string
+		url    string
+		status int
+		body   string
+	}
 	tests := []httptestfields{
 		{"GET", "/hello", http.StatusBadRequest, "invalid request"},
 		{"GET", "/", http.StatusOK, ""},
