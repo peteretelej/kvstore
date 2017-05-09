@@ -14,13 +14,18 @@ __Do NOT use to store your secrets.__
 
 # Basic Usage
 
+## Installation
+``` sh
+go get -u github.com/peteretelej/kvstore
+```
+
 ## Launch kvstore server
 
 Create a json file (_creds.json_) containing a list of accepted credentials/keys that clients will use when getting or setting values.
 
 ```sh
-# create credentials file
-echo "[\"credential1\",\"cred2\"]" >creds.json
+# create credentials file (json array of strings/credentials)
+echo '["credential1","cred2"]' >creds.json
 
 # launches the kvstore store listening on port 8080
 kvstore 
@@ -35,11 +40,12 @@ kvstore -listen localhost:8080
 kvstore -creds ~/.kvcreds.json
 ```
 
+## Using the kvstore
 Clients can interact with the kvstore server through:
    - the command line __(kvstore cli)__ 
    - HTTP Requests `PUT` and `GET`
 
-## Use kvstore via command line
+### Use kvstore via command line
 
 A client needs to set the environment variables 
    - `$KVSTORE` with the store endpoint
@@ -60,7 +66,7 @@ kvstore -get -k "hello"
 ```
 
 
-## Use kvstore via HTTP requests
+### Use kvstore via HTTP requests
 
 Setting key-value: 
 Use `PUT` request with url form/query values:
@@ -76,7 +82,6 @@ Use `GET` request with the following
    - `cred`: one of the values in `creds.json`
    - `k`: the key whose value you want
 
-URL example: __GET__ `http://localhost:8080?cred=credential1&k=hello&v=world`
-
+URL example: __GET__ `http://localhost:8080?cred=credential1&k=hello`
 
 
