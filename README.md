@@ -1,4 +1,4 @@
-# kvstore - a kvstore over http
+# kvstore - a simple key-value store over http
 [![CircleCI](https://circleci.com/gh/peteretelej/kvstore.png?circle-token=:circle-token)](ci) [![Go Report Card](https://goreportcard.com/badge/github.com/peteretelej/kvstore)](https://goreportcard.com/report/github.com/peteretelej/kvstore)
 
 kvstore provides key-value storage over HTTP.
@@ -16,8 +16,7 @@ __Do NOT use to store your secrets.__
 
 ## Launch kvstore server
 
-Create a json file called creds.json containing a list of accepted credentials/keys
-that clients will use when getting or setting values.
+Create a json file (_creds.json_) containing a list of accepted credentials/keys that clients will use when getting or setting values.
 
 ```sh
 # create credentials file
@@ -29,11 +28,13 @@ kvstore
 # launch store on localhost (local kvstore)
 kvstore -listen localhost:8080  
 
-# use a diffent creds.json file
+# use a diffent file instead of creds.json
 kvstore -creds ~/.kvcreds.json
 ```
 
-The launched keystore can be used __via the command line__ or by `PUT` and `GET` __HTTP requests__.
+Clients can interact with the kvstore server through:
+   - the command line __(kvstore cli)__ 
+   - HTTP Requests `PUT` and `GET`
 
 ## Use kvstore via command line
 
