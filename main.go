@@ -19,12 +19,6 @@ import (
 	"time"
 )
 
-// Configs used by cli client to get and set values
-var (
-	store = os.Getenv("KVSTORE")
-	cred  = os.Getenv("KVCRED")
-)
-
 func main() {
 	var (
 		// Server flags
@@ -45,6 +39,11 @@ func main() {
 		return
 	}
 
+	// Configs used by cli client to get and set values
+	var (
+		store = os.Getenv("KVSTORE")
+		cred  = os.Getenv("KVCRED")
+	)
 	if store == "" || cred == "" {
 		fmt.Fprintf(os.Stderr, "kvstore client cannot get/set without $KVSTORE and $KVCRED in env\n")
 		os.Exit(1)
@@ -171,8 +170,7 @@ func (h *handler) put(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *handler) validCred(cred string) bool {
-	cred = strings.TrimSpace(cred)
-	_, ok := h.credsMap[cred]
+	_, ok := h.credsMap[strings.TrimSpace(cred)]
 	return ok
 }
 

@@ -27,7 +27,11 @@ func TestHandler(t *testing.T) {
 	if err := tmpjson.Close(); err != nil {
 		t.Fatalf("unable to close tmp json file for usage in tests: %v", err)
 	}
-	defer os.Remove(cred)
+	defer func() {
+		if err := os.Remove(cred); err != nil {
+			t.Fatalf("unable to delete test json file: %v", err)
+		}
+	}()
 	// blank cred file
 	_, err = newHandler(cred)
 	if err == nil {
@@ -72,7 +76,11 @@ func TestHandlerServeHTTP(t *testing.T) {
 	if err := tmpjson.Close(); err != nil {
 		t.Fatalf("unable to close tmp json file for usage in tests: %v", err)
 	}
-	defer os.Remove(cred)
+	defer func() {
+		if err := os.Remove(cred); err != nil {
+			t.Fatalf("unable to delete test json file: %v", err)
+		}
+	}()
 
 	err = ioutil.WriteFile(cred, []byte(`["testcredential"]`), 0644)
 	if err != nil {
