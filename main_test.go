@@ -98,7 +98,7 @@ func TestHandlerServeHTTP(t *testing.T) {
 		body   string
 	}
 	tests := []httptestfields{
-		{"GET", "/hello", http.StatusBadRequest, "invalid request"},
+		{"GET", "/hello", http.StatusOK, ""},
 		{"GET", "/", http.StatusOK, ""},
 		{"GET", "/?cred=badcredential", http.StatusUnauthorized, "invalid cred"},
 		{"GET", "/?cred=testcredential", http.StatusBadRequest, "missing key"},
