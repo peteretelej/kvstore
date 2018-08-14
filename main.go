@@ -85,6 +85,7 @@ func serve(listenAddr, credsFile string) {
 		Addr:           listenAddr,
 		ReadTimeout:    15 * time.Second,
 		WriteTimeout:   30 * time.Second,
+		IdleTimeout:    30 * time.Minute,
 		MaxHeaderBytes: 1 << 20,
 	}
 	fmt.Printf("launching http server on %s\n", listenAddr)
@@ -122,10 +123,6 @@ func newHandler(credsFile string) (*handler, error) {
 
 // ServeHTTP is handlers implementation for serving http
 func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path != "/" {
-		http.Error(w, "invalid request", http.StatusBadRequest)
-		return
-	}
 	cred := r.FormValue("cred")
 	if cred == "" {
 		fmt.Fprint(w, "")
